@@ -1,0 +1,51 @@
+# Binarios compilados
+build/
+pingbar
+pingbar.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Archivos de test
+*.test
+*.out
+coverage.out
+
+# Directorios de dependencias
+vendor/
+
+# Archivos del sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# Archivos de debug
+debug
+debug.go
+*.log
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp
+
+# Configuracion local (no versionar API keys)
+.env
+.env.local
+config.local
+
