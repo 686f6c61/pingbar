@@ -61,7 +61,7 @@ func Set(business, city string, data json.RawMessage, ttlHours int) error {
 		ttlHours = DefaultTTL
 	}
 
-	if err := os.MkdirAll(config.CacheDir(), 0755); err != nil {
+	if err := os.MkdirAll(config.CacheDir(), 0700); err != nil {
 		return err
 	}
 
@@ -77,7 +77,7 @@ func Set(business, city string, data json.RawMessage, ttlHours int) error {
 		return err
 	}
 
-	return os.WriteFile(getCacheFile(key), jsonData, 0644)
+	return os.WriteFile(getCacheFile(key), jsonData, 0600)
 }
 
 // Clear limpia toda la caché

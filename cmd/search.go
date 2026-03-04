@@ -60,5 +60,5 @@ func runSearch(business, city string) {
 	}
 
 	// Mostrar resultados
-	formatter.PrintResults(results, business, city, showWeek)
+	formatter.PrintResults(results, business, city)
 }

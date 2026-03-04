@@ -8,25 +8,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// configCmd es el comando principal de configuración
+// configCmd es el comando principal de configuracion
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Gestionar configuración",
-	Long:  `Gestionar la configuración de pingbar: API key, idioma, ciudad por defecto, etc.`,
+	Short: "Gestionar configuracion",
+	Long:  `Gestionar la configuracion de pingbar: API key, idioma, ciudad por defecto, etc.`,
 }
 
-// configSetCmd establece un valor de configuración
+// configSetCmd establece un valor de configuracion
 var configSetCmd = &cobra.Command{
 	Use:   "set <clave> <valor>",
-	Short: "Establecer valor de configuración",
-	Long: `Establecer un valor de configuración.
+	Short: "Establecer valor de configuracion",
+	Long: `Establecer un valor de configuracion.
 
 Claves disponibles:
   apikey        - API Key de Serper.dev (obligatorio)
   lang          - Idioma de salida (es/en)
-  default-city  - Ciudad por defecto para búsquedas
+  default-city  - Ciudad por defecto para busquedas
   color         - Colores en terminal (on/off/auto)
-  default-limit - Número de resultados por defecto (1-50)
+  default-limit - Numero de resultados por defecto (1-50)
 
 Ejemplos:
   pingbar config set apikey XXXXXXXXXXXXXXXXXXXX
@@ -47,17 +47,17 @@ Ejemplos:
 		msgs := i18n.Get(i18n.Lang(cfg.Lang))
 		displayValue := value
 		if key == "apikey" {
-			displayValue = maskAPIKey(value)
+			displayValue = config.MaskAPIKey(value)
 		}
 		fmt.Printf(msgs.ConfigSet+"\n", key, displayValue)
 	},
 }
 
-// configGetCmd obtiene un valor de configuración
+// configGetCmd obtiene un valor de configuracion
 var configGetCmd = &cobra.Command{
 	Use:   "get <clave>",
-	Short: "Obtener valor de configuración",
-	Long: `Obtener un valor de configuración específico.
+	Short: "Obtener valor de configuracion",
+	Long: `Obtener un valor de configuracion especifico.
 
 Claves disponibles:
   apikey, lang, default-city, color, default-limit
@@ -79,17 +79,17 @@ Ejemplo:
 
 		displayValue := value
 		if key == "apikey" {
-			displayValue = maskAPIKey(value)
+			displayValue = config.MaskAPIKey(value)
 		}
 
 		fmt.Printf(msgs.ConfigGet+"\n", key, displayValue)
 	},
 }
 
-// configListCmd lista toda la configuración
+// configListCmd lista toda la configuracion
 var configListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Mostrar toda la configuración",
+	Short: "Mostrar toda la configuracion",
 	Run: func(cmd *cobra.Command, args []string) {
 		configMap, err := config.List()
 		if err != nil {
@@ -97,7 +97,7 @@ var configListCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Println("Configuración actual:")
+		fmt.Println("Configuracion actual:")
 		fmt.Println()
 
 		keys := []string{"apikey", "lang", "default-city", "color", "default-limit"}
@@ -110,7 +110,7 @@ var configListCmd = &cobra.Command{
 		}
 
 		fmt.Println()
-		fmt.Printf("Archivo de configuración: %s\n", config.ConfigFile())
+		fmt.Printf("Archivo de configuracion: %s\n", config.ConfigFile())
 	},
 }
 
@@ -119,15 +119,3 @@ func init() {
 	configCmd.AddCommand(configGetCmd)
 	configCmd.AddCommand(configListCmd)
 }
-
-// maskAPIKey oculta parcialmente la API key
-func maskAPIKey(key string) string {
-	if key == "" {
-		return "(no configurada)"
-	}
-	if len(key) <= 8 {
-		return "****"
-	}
-	return key[:4] + "..." + key[len(key)-4:]
-}
-

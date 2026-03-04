@@ -5,13 +5,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// aboutCmd muestra información sobre el programa
+// aboutCmd muestra informacion sobre el programa
 var aboutCmd = &cobra.Command{
 	Use:   "about",
-	Short: "Mostrar autor, versión y año",
-	Long:  `Muestra información sobre pingbar, su autor y versión.`,
+	Short: "Mostrar autor, version y datos del programa",
+	Long:  `Muestra informacion sobre pingbar, su autor y version.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		output.PrintAbout()
+		output.PrintAbout(Version)
 	},
 }
-

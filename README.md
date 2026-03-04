@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/686f6c61/pingbar/main/install.ps1 | iex
 
 ### Desde codigo fuente
 
-Requiere Go 1.21 o superior.
+Requiere Go 1.22 o superior.
 
 ```bash
 git clone https://github.com/686f6c61/pingbar.git
@@ -197,7 +197,6 @@ El comando solicita confirmacion y permite eliminar configuracion y cache.
 |------|-------------|
 | `--json` | Salida en formato JSON |
 | `--week` | Mostrar horario completo de la semana |
-| `--tomorrow` | Mostrar horario de manana |
 | `--lang <es\|en>` | Idioma de salida (temporal) |
 | `--no-color` | Desactivar colores en la salida |
 | `--limit <n>` | Limitar numero de resultados (max 50) |
@@ -286,7 +285,7 @@ Con el flag `--json`, la salida es en formato JSON:
 
 ### Requisitos
 
-- Go 1.21+
+- Go 1.22+
 - Make (opcional)
 
 ### Compilar

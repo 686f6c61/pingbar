@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// Config representa la configuración de pingbar
+// Config representa la configuracion de pingbar
 type Config struct {
 	APIKey       string
 	Lang         string
@@ -18,30 +18,50 @@ type Config struct {
 	DefaultLimit int
 }
 
-// ConfigDir devuelve el directorio de configuración según el SO
+// userHomeDir obtiene el directorio home con fallback a variables de entorno
+func userHomeDir() string {
+	home, err := os.UserHomeDir()
+	if err == nil && home != "" {
+		return home
+	}
+
+	// Fallback por SO
+	if runtime.GOOS == "windows" {
+		if h := os.Getenv("USERPROFILE"); h != "" {
+			return h
+		}
+	} else {
+		if h := os.Getenv("HOME"); h != "" {
+			return h
+		}
+	}
+
+	// Ultimo recurso: directorio temporal
+	return os.TempDir()
+}
+
+// ConfigDir devuelve el directorio de configuracion segun el SO
 func ConfigDir() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(os.Getenv("APPDATA"), "pingbar")
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "pingbar")
+	return filepath.Join(userHomeDir(), ".config", "pingbar")
 }
 
-// ConfigFile devuelve la ruta del archivo de configuración
+// ConfigFile devuelve la ruta del archivo de configuracion
 func ConfigFile() string {
 	return filepath.Join(ConfigDir(), "config")
 }
 
-// CacheDir devuelve el directorio de caché
+// CacheDir devuelve el directorio de cache
 func CacheDir() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(os.Getenv("LOCALAPPDATA"), "pingbar", "cache")
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".cache", "pingbar")
+	return filepath.Join(userHomeDir(), ".cache", "pingbar")
 }
 
-// Load carga la configuración desde el archivo
+// Load carga la configuracion desde el archivo
 func Load() (*Config, error) {
 	cfg := &Config{
 		Lang:         "es",
@@ -94,7 +114,7 @@ func Load() (*Config, error) {
 	return cfg, scanner.Err()
 }
 
-// Set establece un valor de configuración
+// Set establece un valor de configuracion
 func Set(key, value string) error {
 	validKeys := map[string]bool{
 		"apikey":        true,
@@ -105,27 +125,27 @@ func Set(key, value string) error {
 	}
 
 	if !validKeys[key] {
-		return fmt.Errorf("clave de configuración no válida: %s", key)
+		return fmt.Errorf("clave de configuracion no valida: %s", key)
 	}
 
 	switch key {
 	case "lang":
 		if value != "es" && value != "en" {
-			return fmt.Errorf("idioma no válido: %s (usa 'es' o 'en')", value)
+			return fmt.Errorf("idioma no valido: %s (usa 'es' o 'en')", value)
 		}
 	case "color":
 		if value != "on" && value != "off" && value != "auto" {
-			return fmt.Errorf("valor de color no válido: %s (usa 'on', 'off' o 'auto')", value)
+			return fmt.Errorf("valor de color no valido: %s (usa 'on', 'off' o 'auto')", value)
 		}
 	case "default-limit":
 		var limit int
 		_, err := fmt.Sscanf(value, "%d", &limit)
 		if err != nil || limit < 1 || limit > 50 {
-			return fmt.Errorf("límite no válido: %s (debe ser entre 1 y 50)", value)
+			return fmt.Errorf("limite no valido: %s (debe ser entre 1 y 50)", value)
 		}
 	}
 
-	if err := os.MkdirAll(ConfigDir(), 0755); err != nil {
+	if err := os.MkdirAll(ConfigDir(), 0700); err != nil {
 		return err
 	}
 
@@ -148,7 +168,7 @@ func Set(key, value string) error {
 
 	existingConfig[key] = value
 
-	outFile, err := os.Create(ConfigFile())
+	outFile, err := os.OpenFile(ConfigFile(), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
@@ -161,7 +181,7 @@ func Set(key, value string) error {
 	return nil
 }
 
-// Get obtiene un valor de configuración
+// Get obtiene un valor de configuracion
 func Get(key string) (string, error) {
 	cfg, err := Load()
 	if err != nil {
@@ -180,7 +200,7 @@ func Get(key string) (string, error) {
 	case "default-limit":
 		return fmt.Sprintf("%d", cfg.DefaultLimit), nil
 	default:
-		return "", fmt.Errorf("clave de configuración no válida: %s", key)
+		return "", fmt.Errorf("clave de configuracion no valida: %s", key)
 	}
 }
 
@@ -192,7 +212,7 @@ func List() (map[string]string, error) {
 	}
 
 	result := make(map[string]string)
-	result["apikey"] = maskAPIKey(cfg.APIKey)
+	result["apikey"] = MaskAPIKey(cfg.APIKey)
 	result["lang"] = cfg.Lang
 	result["default-city"] = cfg.DefaultCity
 	result["color"] = cfg.Color
@@ -201,7 +221,8 @@ func List() (map[string]string, error) {
 	return result, nil
 }
 
-func maskAPIKey(key string) string {
+// MaskAPIKey oculta parcialmente la API key
+func MaskAPIKey(key string) string {
 	if key == "" {
 		return "(no configurada)"
 	}
@@ -228,4 +249,3 @@ func GetAPIKey() string {
 	}
 	return cfg.APIKey
 }
-

@@ -39,7 +39,7 @@ func NewFormatter(lang string, colorMode string, jsonMode bool) *Formatter {
 }
 
 // PrintResults imprime los resultados
-func (f *Formatter) PrintResults(results []api.BusinessInfo, business, city string, showWeek bool) {
+func (f *Formatter) PrintResults(results []api.BusinessInfo, business, city string) {
 	if f.JSONMode {
 		f.printJSON(results, business, city)
 		return
@@ -78,7 +78,9 @@ func (f *Formatter) printJSON(results []api.BusinessInfo, business, city string)
 
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(output)
+	if err := encoder.Encode(output); err != nil {
+		fmt.Fprintf(os.Stderr, "Error al escribir JSON: %v\n", err)
+	}
 }
 
 func (f *Formatter) printText(results []api.BusinessInfo, business, city string) {
@@ -109,7 +111,6 @@ func (f *Formatter) printBusinessInfo(info api.BusinessInfo) {
 	white := color.New(color.FgWhite)
 	gray := color.New(color.FgHiBlack)
 
-	// Determinar estado y color
 	var statusColor *color.Color
 	var statusText string
 
@@ -124,7 +125,6 @@ func (f *Formatter) printBusinessInfo(info api.BusinessInfo) {
 		statusText = msgs.Closed
 	}
 
-	// Primera línea: [ESTADO] Nombre - Dirección
 	statusColor.Printf("[%s] ", statusText)
 	white.Printf("%s", info.Name)
 	if info.Address != "" {
@@ -134,7 +134,6 @@ func (f *Formatter) printBusinessInfo(info api.BusinessInfo) {
 
 	indent := "          "
 
-	// Mostrar horario si está disponible
 	if info.HoursInfo != "" {
 		now := time.Now()
 		dayName := msgs.Days[int(now.Weekday())]
@@ -143,15 +142,14 @@ func (f *Formatter) printBusinessInfo(info api.BusinessInfo) {
 		gray.Printf("%s%s\n", indent, msgs.NoSchedule)
 	}
 
-	// Mostrar rating si existe
 	if info.Rating > 0 {
 		stars := ""
 		fullStars := int(info.Rating)
 		for i := 0; i < fullStars; i++ {
-			stars += "★"
+			stars += "*"
 		}
 		for i := fullStars; i < 5; i++ {
-			stars += "☆"
+			stars += "."
 		}
 		gray.Printf("%s%s %.1f", indent, stars, info.Rating)
 		if info.RatingCount > 0 {
@@ -160,14 +158,12 @@ func (f *Formatter) printBusinessInfo(info api.BusinessInfo) {
 		fmt.Println()
 	}
 
-	// Mostrar categoría
 	if info.Category != "" {
 		gray.Printf("%s%s\n", indent, info.Category)
 	}
 
-	// Mostrar teléfono
 	if info.Phone != "" {
-		gray.Printf("%s📞 %s\n", indent, info.Phone)
+		gray.Printf("%sTel: %s\n", indent, info.Phone)
 	}
 }
 
@@ -206,12 +202,12 @@ func PrintError(errType, lang string) {
 	red.Println(msg)
 }
 
-// PrintAbout imprime la información sobre el programa
-func PrintAbout() {
-	fmt.Println("pingbar v0.0.1 (2025)")
+// PrintAbout imprime la informacion sobre el programa
+func PrintAbout(version string) {
+	fmt.Printf("pingbar v%s\n", version)
 	fmt.Println()
 	fmt.Println("Autor: https://github.com/686f6c61")
 	fmt.Println()
-	fmt.Println("Porque necesitabas saber si el bar está abierto")
+	fmt.Println("Porque necesitabas saber si el bar esta abierto")
 	fmt.Println("antes de salir de casa.")
 }
