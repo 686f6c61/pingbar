@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -21,9 +22,9 @@ type CacheEntry struct {
 // DefaultTTL es el tiempo de vida por defecto de la caché (24 horas)
 const DefaultTTL = 24
 
-func generateKey(business, city string) string {
+func generateKey(business, city string, limit int) string {
 	h := sha256.New()
-	h.Write([]byte(business + "|" + city))
+	fmt.Fprintf(h, "%s|%s|%d", business, city, limit)
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
@@ -32,8 +33,8 @@ func getCacheFile(key string) string {
 }
 
 // Get obtiene datos de la caché si existen y no han expirado
-func Get(business, city string) (json.RawMessage, bool) {
-	key := generateKey(business, city)
+func Get(business, city string, limit int) (json.RawMessage, bool) {
+	key := generateKey(business, city, limit)
 	cacheFile := getCacheFile(key)
 
 	data, err := os.ReadFile(cacheFile)
@@ -56,7 +57,7 @@ func Get(business, city string) (json.RawMessage, bool) {
 }
 
 // Set guarda datos en la caché
-func Set(business, city string, data json.RawMessage, ttlHours int) error {
+func Set(business, city string, limit int, data json.RawMessage, ttlHours int) error {
 	if ttlHours <= 0 {
 		ttlHours = DefaultTTL
 	}
@@ -65,7 +66,7 @@ func Set(business, city string, data json.RawMessage, ttlHours int) error {
 		return err
 	}
 
-	key := generateKey(business, city)
+	key := generateKey(business, city, limit)
 	entry := CacheEntry{
 		Data:      data,
 		Timestamp: time.Now(),

@@ -12,13 +12,12 @@ import (
 var (
 	// Flags globales
 	jsonOutput bool
-	showWeek   bool
 	langFlag   string
 	noColor    bool
 	limitFlag  int
 
 	// Version
-	Version = "0.0.2"
+	Version = "0.1.0"
 )
 
 // rootCmd representa el comando base
@@ -79,7 +78,6 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Salida en formato JSON")
-	rootCmd.PersistentFlags().BoolVar(&showWeek, "week", false, "Mostrar horario completo de la semana")
 	rootCmd.PersistentFlags().StringVar(&langFlag, "lang", "", "Idioma de salida (es|en)")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "Desactivar colores en la salida")
 	rootCmd.PersistentFlags().IntVar(&limitFlag, "limit", 0, "Limitar numero de resultados (maximo 50)")

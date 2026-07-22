@@ -7,8 +7,15 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
+	"unicode"
+
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
@@ -17,18 +24,52 @@ const (
 
 	maxResponseSize = 10 << 20 // 10MB
 	maxInputLength  = 200
+
+	// Solo se buscan horarios para los primeros resultados (ahorrar creditos)
+	maxHoursLookups = 3
 )
 
-// Regex precompiladas para extraccion de horarios
+var httpClient = &http.Client{Timeout: 15 * time.Second}
+
+// Regex precompiladas para extraccion de horarios. Los nombres de dia van
+// sin tilde porque el texto se normaliza antes de aplicarlas.
 var (
 	reTimeRange     = regexp.MustCompile(`(\d{1,2}:\d{2})\s*[-–a]\s*(\d{1,2}:\d{2})`)
 	reTimeFromTo    = regexp.MustCompile(`de\s+(\d{1,2}:\d{2})\s+a\s+(\d{1,2}:\d{2})`)
 	reHourRange     = regexp.MustCompile(`(\d{1,2})h\s*[-–a]\s*(\d{1,2})h`)
-	reDayTimeRange  = regexp.MustCompile(`(?:lunes|martes|miércoles|jueves|viernes|sábado|domingo).*?(\d{1,2}:\d{2})\s*[-–a]\s*(\d{1,2}:\d{2})`)
-	reOpenDay       = regexp.MustCompile(`abierto.*?(?:lunes|martes|miércoles|jueves|viernes|sábado|domingo)`)
+	reDayTimeRange  = regexp.MustCompile(`(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo).*?(\d{1,2}:\d{2})\s*[-–a]\s*(\d{1,2}:\d{2})`)
+	reOpenDay       = regexp.MustCompile(`abierto.*?(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)`)
 	reSegmentTime   = regexp.MustCompile(`(\d{1,2}[:\.]?\d{0,2})\s*[-–a]\s*(\d{1,2}[:\.]?\d{0,2})`)
 	reCurrentlyOpen = regexp.MustCompile(`(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})`)
 )
+
+// reDayHours prioriza el horario del dia concreto cuando el snippet lista
+// varios dias con horas distintas
+var reDayHours = map[time.Weekday]*regexp.Regexp{
+	time.Sunday:    dayHoursRegexp("domingo"),
+	time.Monday:    dayHoursRegexp("lunes"),
+	time.Tuesday:   dayHoursRegexp("martes"),
+	time.Wednesday: dayHoursRegexp("miercoles"),
+	time.Thursday:  dayHoursRegexp("jueves"),
+	time.Friday:    dayHoursRegexp("viernes"),
+	time.Saturday:  dayHoursRegexp("sabado"),
+}
+
+func dayHoursRegexp(day string) *regexp.Regexp {
+	return regexp.MustCompile(day + `[^0-9]{0,30}(\d{1,2}:\d{2})\s*[-–a]\s*(\d{1,2}:\d{2})`)
+}
+
+// accentFolder elimina marcas diacriticas (tildes) para comparaciones
+var accentFolder = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+
+// normalizeForCompare pasa a minusculas y quita tildes ("Málaga" -> "malaga")
+func normalizeForCompare(s string) string {
+	s = strings.ToLower(s)
+	if folded, _, err := transform.String(accentFolder, s); err == nil {
+		return folded
+	}
+	return s
+}
 
 // PlaceResult representa un resultado de lugar de la API
 type PlaceResult struct {
@@ -101,10 +142,11 @@ func Search(apiKey, business, city string, limit int) ([]BusinessInfo, error) {
 		return nil, err
 	}
 
-	results := make([]BusinessInfo, 0, len(places))
+	results := make([]BusinessInfo, len(places))
 
+	var wg sync.WaitGroup
 	for i, place := range places {
-		info := BusinessInfo{
+		results[i] = BusinessInfo{
 			Name:        place.Title,
 			Address:     place.Address,
 			Rating:      place.Rating,
@@ -115,28 +157,39 @@ func Search(apiKey, business, city string, limit int) ([]BusinessInfo, error) {
 			IsUnknown:   true,
 		}
 
-		// Solo buscar horarios para los primeros 3 resultados (ahorrar creditos)
-		if i < 3 {
-			hoursInfo := searchHours(apiKey, place.Title, city)
-			if hoursInfo != "" {
-				info.HoursInfo = hoursInfo
-				info.IsUnknown = false
-				info.TodayHours = hoursInfo
-				info.IsOpen = isCurrentlyOpen(hoursInfo)
-			}
+		if i < maxHoursLookups {
+			wg.Add(1)
+			go func(idx int, title string) {
+				defer wg.Done()
+				hoursInfo := searchHours(apiKey, title, city)
+				if hoursInfo != "" {
+					results[idx].HoursInfo = hoursInfo
+					results[idx].IsUnknown = false
+					results[idx].TodayHours = hoursInfo
+					results[idx].IsOpen = isOpenAt(hoursInfo, time.Now())
+				}
+			}(i, place.Title)
 		}
-
-		results = append(results, info)
 	}
+	wg.Wait()
 
 	return results, nil
+}
+
+// RefreshOpenState recalcula el estado abierto/cerrado con la hora actual.
+// Necesario al servir resultados desde cache, donde el estado guardado
+// corresponde al momento de la consulta original.
+func (b *BusinessInfo) RefreshOpenState() {
+	if !b.IsUnknown {
+		b.IsOpen = isOpenAt(b.HoursInfo, time.Now())
+	}
 }
 
 // searchPlaces busca lugares con el endpoint /places
 func searchPlaces(apiKey, business, city string, limit int) ([]PlaceResult, error) {
 	query := fmt.Sprintf("%s %s", business, city)
 
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"q":   query,
 		"gl":  "es",
 		"hl":  "es",
@@ -155,8 +208,7 @@ func searchPlaces(apiKey, business, city string, limit int) ([]PlaceResult, erro
 	req.Header.Set("X-API-KEY", apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, &APIError{Type: "connection", Message: "Error de conexion"}
 	}
@@ -183,12 +235,11 @@ func searchPlaces(apiKey, business, city string, limit int) ([]PlaceResult, erro
 		return nil, err
 	}
 
-	cityLower := strings.ToLower(city)
+	cityNorm := normalizeForCompare(city)
 	filtered := make([]PlaceResult, 0)
 
 	for _, place := range serperResp.Places {
-		addressLower := strings.ToLower(place.Address)
-		if strings.Contains(addressLower, cityLower) {
+		if strings.Contains(normalizeForCompare(place.Address), cityNorm) {
 			filtered = append(filtered, place)
 		}
 	}
@@ -208,7 +259,7 @@ func searchPlaces(apiKey, business, city string, limit int) ([]PlaceResult, erro
 func searchHours(apiKey, businessName, city string) string {
 	query := fmt.Sprintf("horario %s %s", businessName, city)
 
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"q":   query,
 		"gl":  "es",
 		"hl":  "es",
@@ -227,8 +278,7 @@ func searchHours(apiKey, businessName, city string) string {
 	req.Header.Set("X-API-KEY", apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return ""
 	}
@@ -248,8 +298,9 @@ func searchHours(apiKey, businessName, city string) string {
 		return ""
 	}
 
+	today := time.Now().Weekday()
 	for _, result := range searchResp.Organic {
-		hours := extractHoursFromText(result.Snippet)
+		hours := extractHoursFromText(result.Snippet, today)
 		if hours != "" {
 			return hours
 		}
@@ -258,9 +309,16 @@ func searchHours(apiKey, businessName, city string) string {
 	return ""
 }
 
-// extractHoursFromText extrae informacion de horario de un texto
-func extractHoursFromText(text string) string {
-	text = strings.ToLower(text)
+// extractHoursFromText extrae informacion de horario de un texto,
+// priorizando el horario del dia indicado si el texto lo menciona
+func extractHoursFromText(text string, weekday time.Weekday) string {
+	text = normalizeForCompare(text)
+
+	if re, ok := reDayHours[weekday]; ok {
+		if m := re.FindStringSubmatch(text); len(m) >= 3 {
+			return fmt.Sprintf("%s - %s", normalizeTime(m[1]), normalizeTime(m[2]))
+		}
+	}
 
 	type regexPattern struct {
 		re        *regexp.Regexp
@@ -340,8 +398,8 @@ func normalizeTime(t string) string {
 	return t
 }
 
-// isCurrentlyOpen determina si esta abierto basado en el horario extraido
-func isCurrentlyOpen(hoursInfo string) bool {
+// isOpenAt determina si esta abierto en el instante dado segun el horario extraido
+func isOpenAt(hoursInfo string, now time.Time) bool {
 	if strings.Contains(strings.ToLower(hoursInfo), "24 horas") {
 		return true
 	}
@@ -351,17 +409,12 @@ func isCurrentlyOpen(hoursInfo string) bool {
 		return false
 	}
 
-	now := time.Now()
-	currentHour := now.Hour()
-	currentMin := now.Minute()
+	openH, _ := strconv.Atoi(matches[1])
+	openM, _ := strconv.Atoi(matches[2])
+	closeH, _ := strconv.Atoi(matches[3])
+	closeM, _ := strconv.Atoi(matches[4])
 
-	var openH, openM, closeH, closeM int
-	fmt.Sscanf(matches[1], "%d", &openH)
-	fmt.Sscanf(matches[2], "%d", &openM)
-	fmt.Sscanf(matches[3], "%d", &closeH)
-	fmt.Sscanf(matches[4], "%d", &closeM)
-
-	currentMins := currentHour*60 + currentMin
+	currentMins := now.Hour()*60 + now.Minute()
 	openMins := openH*60 + openM
 	closeMins := closeH*60 + closeM
 

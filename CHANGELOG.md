@@ -5,6 +5,51 @@ Todos los cambios notables de este proyecto seran documentados en este archivo.
 El formato esta basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.1.0] - 2026-07-22
+
+### Seguridad
+
+- Toolchain fijado a Go 1.26.5 en go.mod: elimina 13 vulnerabilidades de la
+  biblioteca estandar presentes al compilar con Go 1.26.0 (govulncheck limpio)
+- Dependencias actualizadas: cobra v1.8.0 -> v1.10.2, fatih/color v1.16.0 -> v1.19.0,
+  go-colorable, go-isatty, pflag y golang.org/x/sys a sus ultimas versiones
+
+### Corregido
+
+- La cache local no se usaba: estaba implementada y documentada, pero las
+  busquedas siempre llamaban a la API. Ahora los resultados se cachean 24 horas
+  y el estado abierto/cerrado se recalcula con la hora actual al servir desde cache
+- La clave de cache incluye ahora el limite de resultados para evitar servir
+  resultados truncados o incompletos entre busquedas con distinto --limit
+- Escritura determinista del archivo de configuracion (claves ordenadas);
+  antes el orden cambiaba en cada guardado
+
+### Agregado
+
+- Pipeline de CI en GitHub Actions: formato, vet, build, tests con detector de
+  carreras, govulncheck y compilacion multiplataforma en cada push y PR
+- Tests unitarios para extraccion de horarios, calculo abierto/cerrado,
+  configuracion y cache (antes no habia ningun test)
+
+### Mejorado
+
+- Las busquedas de horarios de los 3 primeros resultados se ejecutan en paralelo
+  (antes eran secuenciales: hasta 3 llamadas HTTP encadenadas)
+- El filtrado por ciudad ignora tildes: "Málaga" y "malaga" ahora coinciden
+  (normalizacion Unicode con golang.org/x/text)
+- La extraccion de horarios prioriza el dia actual cuando el snippet lista
+  varios dias con horas distintas, y reconoce nombres de dia con y sin tilde
+- Cliente HTTP compartido con keep-alive en lugar de crear uno por peticion
+- strconv.Atoi en lugar de fmt.Sscanf para parsear enteros
+- errors.As en lugar de asercion de tipo directa para errores de API
+- interface{} reemplazado por any
+
+### Eliminado
+
+- Flag --week (documentado pero sin implementacion, como el antiguo --tomorrow)
+- Mensajes i18n sin uso (Tomorrow, ClosesIn, ClosedAgo, Holiday, SpecialHours,
+  MoreResults, ViewAll, Yes, No) y funcion GetDay muerta
+
 ## [0.0.2] - 2026-03-04
 
 ### Seguridad

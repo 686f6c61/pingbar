@@ -48,10 +48,10 @@ func (f *Formatter) PrintResults(results []api.BusinessInfo, business, city stri
 }
 
 func (f *Formatter) printJSON(results []api.BusinessInfo, business, city string) {
-	jsonResults := make([]map[string]interface{}, 0, len(results))
+	jsonResults := make([]map[string]any, 0, len(results))
 
 	for _, r := range results {
-		item := map[string]interface{}{
+		item := map[string]any{
 			"nombre":    r.Name,
 			"direccion": r.Address,
 			"rating":    r.Rating,
@@ -67,7 +67,7 @@ func (f *Formatter) printJSON(results []api.BusinessInfo, business, city string)
 		jsonResults = append(jsonResults, item)
 	}
 
-	output := map[string]interface{}{
+	output := map[string]any{
 		"query": map[string]string{
 			"negocio": business,
 			"ciudad":  city,

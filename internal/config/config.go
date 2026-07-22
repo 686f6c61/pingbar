@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -103,9 +105,7 @@ func Load() (*Config, error) {
 		case "color":
 			cfg.Color = value
 		case "default-limit":
-			var limit int
-			fmt.Sscanf(value, "%d", &limit)
-			if limit > 0 && limit <= 50 {
+			if limit, err := strconv.Atoi(value); err == nil && limit > 0 && limit <= 50 {
 				cfg.DefaultLimit = limit
 			}
 		}
@@ -138,8 +138,7 @@ func Set(key, value string) error {
 			return fmt.Errorf("valor de color no valido: %s (usa 'on', 'off' o 'auto')", value)
 		}
 	case "default-limit":
-		var limit int
-		_, err := fmt.Sscanf(value, "%d", &limit)
+		limit, err := strconv.Atoi(value)
 		if err != nil || limit < 1 || limit > 50 {
 			return fmt.Errorf("limite no valido: %s (debe ser entre 1 y 50)", value)
 		}
@@ -174,8 +173,14 @@ func Set(key, value string) error {
 	}
 	defer outFile.Close()
 
-	for k, v := range existingConfig {
-		fmt.Fprintf(outFile, "%s=%s\n", k, v)
+	// Escritura ordenada para que el archivo sea estable entre ejecuciones
+	keys := make([]string, 0, len(existingConfig))
+	for k := range existingConfig {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Fprintf(outFile, "%s=%s\n", k, existingConfig[k])
 	}
 
 	return nil

@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/686f6c61/pingbar/main/install.ps1 | iex
 
 ### Desde codigo fuente
 
-Requiere Go 1.22 o superior.
+Requiere Go 1.25 o superior.
 
 ```bash
 git clone https://github.com/686f6c61/pingbar.git
@@ -196,7 +196,6 @@ El comando solicita confirmacion y permite eliminar configuracion y cache.
 | Flag | Descripcion |
 |------|-------------|
 | `--json` | Salida en formato JSON |
-| `--week` | Mostrar horario completo de la semana |
 | `--lang <es\|en>` | Idioma de salida (temporal) |
 | `--no-color` | Desactivar colores en la salida |
 | `--limit <n>` | Limitar numero de resultados (max 50) |
@@ -234,7 +233,8 @@ Con el flag `--json`, la salida es en formato JSON:
       "rating": 4.3,
       "opiniones": 410,
       "categoria": "Centro comercial",
-      "telefono": "914 18 88 00"
+      "telefono": "914 18 88 00",
+      "website": "https://www.elcorteingles.es"
     }
   ]
 }
@@ -285,7 +285,7 @@ Con el flag `--json`, la salida es en formato JSON:
 
 ### Requisitos
 
-- Go 1.22+
+- Go 1.25+
 - Make (opcional)
 
 ### Compilar
@@ -312,20 +312,32 @@ pingbar/
 │   └── uninstall.go
 ├── internal/
 │   ├── api/
-│   │   └── serper.go
+│   │   ├── serper.go
+│   │   └── serper_test.go
 │   ├── config/
-│   │   └── config.go
+│   │   ├── config.go
+│   │   └── config_test.go
 │   ├── cache/
-│   │   └── cache.go
+│   │   ├── cache.go
+│   │   └── cache_test.go
 │   ├── output/
 │   │   └── output.go
 │   └── i18n/
 │       └── i18n.go
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── go.mod
 ├── Makefile
 ├── install.sh
 └── install.ps1
 ```
+
+### Integración continua
+
+Cada push y pull request ejecuta en GitHub Actions: verificación de formato
+(`gofmt`), `go vet`, compilación, tests con detector de carreras y escaneo de
+vulnerabilidades (`govulncheck`), además de la compilación multiplataforma.
 
 ---
 
