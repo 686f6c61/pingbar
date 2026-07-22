@@ -1,7 +1,7 @@
 # Makefile para pingbar
 # https://github.com/686f6c61/pingbar
 
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.0.1")
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//' || echo "0.1.0")
 BINARY_NAME := pingbar
 BUILD_DIR := build
 LDFLAGS := -ldflags "-s -w -X github.com/686f6c61/pingbar/cmd.Version=$(VERSION)"
