@@ -49,4 +49,9 @@ temp/
 .env.local
 config.local
 
+# Artefactos de asistentes de IA y herramientas locales
 .claude/
+.cursor/
+.codex/
+.aider*
+.copilot/

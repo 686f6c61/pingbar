@@ -5,6 +5,20 @@ Todos los cambios notables de este proyecto seran documentados en este archivo.
 El formato esta basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.2.0] - 2026-07-22
+
+### Mejorado
+
+- Actions de CI actualizadas a checkout v7 y setup-go v7 (elimina avisos de
+  Node.js 20 obsoleto en los runners de GitHub)
+- .gitignore ampliado con una seccion para artefactos de asistentes de IA y
+  herramientas locales (.claude/, .cursor/, .codex/, .aider*, .copilot/)
+
+### Eliminado
+
+- Fichero .claude/alfred-evidence.json generado por herramientas locales que
+  se colo en el repositorio
+
 ## [0.1.0] - 2026-07-22
 
 ### Seguridad
