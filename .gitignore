@@ -49,3 +49,4 @@ temp/
 .env.local
 config.local
 
+.claude/
